@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Archery Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #1e3c72, #2a5298);
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 15px 20px;
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      color: white;
+      font-size: 18px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      user-select: none;
+    }
+
+    #message {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px;
+      color: #ff5252;
+      font-weight: bold;
+      text-shadow: 2px 2px 5px black;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">
+    🎯 Score: <span id="score">0</span><br/>
+    💀 Dummies Spawned: <span id="dummyCount">0</span>
+  </div>
+  <div id="message"></div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let score = 0;
+let dummySpawnCount = 0;
+
+let mouse = { x: 0, y: 0 };
+let isDragging = false;
+let arrowReleased = false;
+let arrow = null;
+let arrows = [];
+const gravity = 0.3;
+let dummies = [];
+
+const dummyParts = [
+  { name: 'head', yOffset: -30, points: 10 },
+  { name: 'body', yOffset: 0, points: 5 },
+  { name: 'legs', yOffset: 30, points: 2 }
+];
+
+const archer = { x: 150, y: canvas.height - 200 };
+
+class Arrow {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.length = 60;
+    this.angle = 0;
+    this.released = false;
+    this.hit = false;
+  }
+  update() {
+    if (this.released && !this.hit) {
+      this.vy += gravity;
+      this.x += this.vx;
+      this.y += this.vy;
+      this.angle = Math.atan2(this.vy, this.vx);
+
+      for (let dummy of dummies) {
+        for (let part of dummyParts) {
+          const dx = this.x - dummy.x;
+          const dy = this.y - (dummy.y + part.yOffset);
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 20 && !this.hit) {
+            this.hit = true;
+            dummy.hitPart = part.name;
+            dummy.score = part.points;
+            dummy.hit = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    ctx.beginPath();
+    ctx.moveTo(-this.length / 2, 0);
+    ctx.lineTo(this.length / 2, 0);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(this.length / 2, 0);
+    ctx.lineTo(this.length / 2 - 10, -5);
+    ctx.lineTo(this.length / 2 - 10, 5);
+    ctx.fillStyle = '#f44336';
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+class Dummy {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.hitPart = null;
+    this.score = 0;
+    this.hit = false;
+  }
+  draw() {
+    if (this.hit) return;
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y - 30, 15, 0, Math.PI * 2);
+    ctx.fillStyle = this.hitPart === 'head' ? 'red' : '#fff';
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y - 15);
+    ctx.lineTo(this.x, this.y + 15);
+    ctx.strokeStyle = this.hitPart === 'body' ? 'red' : '#000';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y + 15);
+    ctx.lineTo(this.x - 10, this.y + 35);
+    ctx.moveTo(this.x, this.y + 15);
+    ctx.lineTo(this.x + 10, this.y + 35);
+    ctx.strokeStyle = this.hitPart === 'legs' ? 'red' : '#000';
+    ctx.stroke();
+  }
+}
+
+function drawArcher() {
+  ctx.beginPath();
+  ctx.arc(archer.x, archer.y - 30, 20, 0, Math.PI * 2);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(archer.x, archer.y - 10);
+  ctx.lineTo(archer.x, archer.y + 30);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(archer.x, archer.y + 30);
+  ctx.lineTo(archer.x - 10, archer.y + 50);
+  ctx.moveTo(archer.x, archer.y + 30);
+  ctx.lineTo(archer.x + 10, archer.y + 50);
+  ctx.stroke();
+}
+
+function drawProjectionLine(toX, toY) {
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(archer.x, archer.y);
+  ctx.lineTo(toX, toY);
+  ctx.strokeStyle = 'cyan';
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function spawnDummy() {
+  const x = Math.random() * (canvas.width - 200) + 200;
+  const y = Math.random() * (canvas.height - 300) + 150;
+  dummies.push(new Dummy(x, y));
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (!arrowReleased) {
+    isDragging = true;
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    arrow = new Arrow(archer.x, archer.y);
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (isDragging) {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    arrowReleased = true;
+
+    const dx = mouse.x - archer.x;
+    const dy = mouse.y - archer.y;
+
+    arrow.vx = -dx * 0.2;
+    arrow.vy = -dy * 0.2;
+    arrow.released = true;
+    arrows.push(arrow);
+    setTimeout(() => {
+      arrowReleased = false;
+    }, 500);
+  }
+});
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawArcher();
+
+  if (isDragging && arrow) {
+    drawProjectionLine(mouse.x, mouse.y);
+    const dx = mouse.x - archer.x;
+    const dy = mouse.y - archer.y;
+    arrow.angle = Math.atan2(-dy, -dx);
+    arrow.x = archer.x;
+    arrow.y = archer.y;
+    arrow.draw();
+  }
+
+  for (let a of arrows) {
+    a.update();
+    a.draw();
+  }
+
+  for (let dummy of dummies) {
+    if (dummy.hit && dummy.score > 0) {
+      score += dummy.score;
+      updateScoreUI();
+
+      if (dummy.hitPart === 'head') {
+        showMessage("💥 Headshot!");
+      }
+      dummy.score = 0;
+    }
+  }
+
+  arrows = arrows.filter(a => !a.hit);
+  dummies = dummies.filter(d => !d.hit);
+
+  if (dummies.length < (dummySpawnCount < 6 ? 1 : 2)) {
+    spawnDummy();
+    dummySpawnCount++;
+    updateScoreUI();
+  }
+
+  for (let dummy of dummies) {
+    dummy.draw();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function showMessage(msg, duration = 1000) {
+  const el = document.getElementById('message');
+  el.textContent = msg;
+  el.style.opacity = 1;
+
+  setTimeout(() => {
+    el.style.opacity = 0;
+  }, duration);
+}
+
+function updateScoreUI() {
+  document.getElementById("score").textContent = score;
+  document.getElementById("dummyCount").textContent = dummySpawnCount;
+}
+
+spawnDummy();
+animate();
+</script>
+</body>
+</html>
