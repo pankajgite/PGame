@@ -319,6 +319,7 @@ canvas.addEventListener('mouseup', () => {
 
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawPlatforms();
   drawArcher();
 
   if (isDragging && arrow) {
@@ -422,6 +423,19 @@ function endGame() {
   document.getElementById("finalScore").innerHTML = finalScoreText;
   document.getElementById("endScreen").style.display = 'flex';
 }
+
+function drawPlatforms() {
+  // Platform under archer
+  ctx.fillStyle = '#3e3e3e';
+  ctx.fillRect(archer.x - 40, archer.y + 55, 80, 10);
+
+  // Platforms under each dummy
+  ctx.fillStyle = '#444';
+  for (let dummy of dummies) {
+    ctx.fillRect(dummy.x - 25, dummy.y + 40, 50, 10);
+  }
+}
+
 
 
 function restartGame() {
