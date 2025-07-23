@@ -8,8 +8,77 @@
     body {
       margin: 0;
       overflow: hidden;
-      background: linear-gradient(to bottom, #1e3c72, #2a5298);
-      font-family: 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 60% 40%, #3a7bd5 0%, #1e3c72 100%);
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    #hud {
+      border: 2px solid #fff;
+      background: rgba(30, 60, 114, 0.7);
+      box-shadow: 0 8px 24px rgba(42, 82, 152, 0.4);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    #hud span {
+      font-weight: bold;
+      color: #ffd700;
+      text-shadow: 1px 1px 3px #222;
+    }
+
+    #startScreen, #endScreen {
+      background: linear-gradient(135deg, #1e3c72 60%, #2a5298 100%);
+      box-shadow: 0 0 40px 10px rgba(30,60,114,0.5);
+      border-radius: 18px;
+      padding: 32px 48px;
+      animation: fadeIn 0.7s;
+    }
+
+    #startScreen h1 {
+      font-size: 3rem;
+      margin-bottom: 24px;
+      color: #ffd700;
+      text-shadow: 2px 2px 8px #222;
+    }
+
+    #startScreen button, #endScreen button {
+      background: #ffd700;
+      color: #1e3c72;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 14px 32px;
+      margin-top: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: background 0.2s, transform 0.2s;
+    }
+    #startScreen button:hover, #endScreen button:hover {
+      background: #fff;
+      transform: scale(1.05);
+    }
+
+    #endScreen #finalScore {
+      color: #ffd700;
+      text-shadow: 1px 1px 6px #222;
+    }
+
+    #message {
+      background: rgba(255, 82, 82, 0.85);
+      border-radius: 8px;
+      padding: 8px 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 2rem;
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95);}
+      to { opacity: 1; transform: scale(1);}
     }
 
     canvas {
