@@ -16,8 +16,8 @@ A fun and interactive browser-based archery game where you shoot arrows at anima
 
 ## 🚀 Play Now
 
-[🔗 Click here to play the game!](https://yourusername.github.io/archer-dummy-hit-game/)  
-> *(Replace the link with your deployed version)*
+[🔗 Click here to play the game!](https://pankajgite.github.io/PGame/)  
+
 
 ---
 
