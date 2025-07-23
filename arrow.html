@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Archery Game</title>
   <style>
-
-    /* jsd */
     body {
       margin: 0;
       overflow: hidden;
@@ -50,8 +48,21 @@
   <canvas id="gameCanvas"></canvas>
   <div id="hud">
     🎯 Score: <span id="score">0</span><br/>
-    💀 Dummies Spawned: <span id="dummyCount">0</span>
+    💀 Dummies Spawned: <span id="dummyCount">0</span><br/>
+    ⏱️ Time Left: <span id="timer">30</span>s<br/>
+    🏆 Best Score: <span id="bestScore">0</span>
   </div>
+  <!-- Add to <body> after canvas and HUD -->
+<div id="startScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:white; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:2;">
+  <h1>🏹 Archery Game</h1>
+  <button onclick="startGame()" style="padding: 12px 24px; font-size: 20px; cursor: pointer;">Start Game</button>
+</div>
+
+<div id="endScreen" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); color:white; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:2;">
+  <div id="finalScore" style="font-size: 28px; margin-bottom: 20px;"></div>
+  <button onclick="restartGame()" style="padding: 12px 24px; font-size: 20px; cursor: pointer;">Play Again</button>
+</div>
+
   <div id="message"></div>
 
 <script>
@@ -61,7 +72,10 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 let score = 0;
+let bestScore = localStorage.getItem('bestScore') || 0;
 let dummySpawnCount = 0;
+let gameTime = 30; // seconds
+let gameEnded = false;
 
 let mouse = { x: 0, y: 0 };
 let isDragging = false;
@@ -102,7 +116,7 @@ class Arrow {
           const dx = this.x - dummy.x;
           const dy = this.y - (dummy.y + part.yOffset);
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 20 && !this.hit) {
+          if (dist < 20 && !this.hit && !dummy.hit) {
             this.hit = true;
             dummy.hitPart = part.name;
             dummy.score = part.points;
@@ -144,7 +158,6 @@ class Dummy {
   }
   draw() {
     if (this.hit) return;
-
     ctx.beginPath();
     ctx.arc(this.x, this.y - 30, 15, 0, Math.PI * 2);
     ctx.fillStyle = this.hitPart === 'head' ? 'red' : '#fff';
@@ -204,7 +217,7 @@ function spawnDummy() {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-  if (!arrowReleased) {
+  if (!arrowReleased && !gameEnded) {
     isDragging = true;
     mouse.x = e.clientX;
     mouse.y = e.clientY;
@@ -223,10 +236,8 @@ canvas.addEventListener('mouseup', () => {
   if (isDragging) {
     isDragging = false;
     arrowReleased = true;
-
     const dx = mouse.x - archer.x;
     const dy = mouse.y - archer.y;
-
     arrow.vx = -dx * 0.2;
     arrow.vy = -dy * 0.2;
     arrow.released = true;
@@ -260,10 +271,7 @@ function animate() {
     if (dummy.hit && dummy.score > 0) {
       score += dummy.score;
       updateScoreUI();
-
-      if (dummy.hitPart === 'head') {
-        showMessage("💥 Headshot!");
-      }
+      if (dummy.hitPart === 'head') showMessage("💥 Headshot!");
       dummy.score = 0;
     }
   }
@@ -271,7 +279,7 @@ function animate() {
   arrows = arrows.filter(a => !a.hit);
   dummies = dummies.filter(d => !d.hit);
 
-  if (dummies.length < (dummySpawnCount < 6 ? 1 : 2)) {
+  if (!gameEnded && dummies.length < (dummySpawnCount < 6 ? 1 : 2)) {
     spawnDummy();
     dummySpawnCount++;
     updateScoreUI();
@@ -288,19 +296,85 @@ function showMessage(msg, duration = 1000) {
   const el = document.getElementById('message');
   el.textContent = msg;
   el.style.opacity = 1;
-
-  setTimeout(() => {
-    el.style.opacity = 0;
-  }, duration);
+  setTimeout(() => el.style.opacity = 0, duration);
 }
 
 function updateScoreUI() {
   document.getElementById("score").textContent = score;
   document.getElementById("dummyCount").textContent = dummySpawnCount;
+  document.getElementById("bestScore").textContent = bestScore;
 }
 
-spawnDummy();
-animate();
+function startTimer() {
+  const timerEl = document.getElementById('timer');
+  const timerInterval = setInterval(() => {
+    if (gameTime > 0) {
+      gameTime--;
+      timerEl.textContent = gameTime;
+    } else {
+      clearInterval(timerInterval);
+      gameEnded = true;
+      if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem('bestScore', bestScore);
+      }
+      showMessage("⏰ Time's up!");
+    }
+  }, 1000);
+}
+
+function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  gameTime = 30;
+  gameEnded = false;
+  score = 0;
+  dummySpawnCount = 0;
+  arrows = [];
+  dummies = [];
+  updateScoreUI();
+  startTimer();
+  animate();
+}
+
+function endGame() {
+  gameEnded = true;
+  
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('bestScore', bestScore);
+  }
+
+  const finalScoreText = `
+    🎯 Final Score: ${score}<br>
+    🏆 Best Score: ${bestScore}<br>
+    🚹 Dummies Spawned: ${dummySpawnCount}
+  `;
+
+  document.getElementById("finalScore").innerHTML = finalScoreText;
+  document.getElementById("endScreen").style.display = 'flex';
+}
+
+
+function restartGame() {
+  document.getElementById("endScreen").style.display = 'none';
+  startGame();
+}
+
+function startTimer() {
+  const timerEl = document.getElementById('timer');
+  const timerInterval = setInterval(() => {
+    if (gameTime > 0) {
+      gameTime--;
+      timerEl.textContent = gameTime;
+    } else {
+      clearInterval(timerInterval);
+      showMessage("⏰ Time's up!");
+      endGame();
+    }
+  }, 1000);
+}
+
+
 </script>
 </body>
 </html>
